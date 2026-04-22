@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__next {
+  margin: 0;
+  min-width: 400px;
+  min-height: 400px;
+}
+
+body {
+  background: transparent;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+}

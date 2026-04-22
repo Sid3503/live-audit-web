@@ -1,0 +1,120 @@
+# --------------------------------------------------
+# OS / Filesystem noise
+# --------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100/
+.Trashes/
+._*
+
+# --------------------------------------------------
+# Editor / IDE
+# --------------------------------------------------
+.idea/
+.vscode/
+*.iml
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# --------------------------------------------------
+# Logs / temp files
+# --------------------------------------------------
+*.log
+*.out
+*.err
+*.pid
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --------------------------------------------------
+# Environment / secrets
+# --------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env*.example
+!.env.sample
+!.env*.sample
+
+# --------------------------------------------------
+# Python
+# --------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.python-version
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
+
+# --------------------------------------------------
+# Node / JavaScript / TypeScript
+# --------------------------------------------------
+node_modules/
+ui/node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.parcel-cache/
+*.tsbuildinfo
+
+# --------------------------------------------------
+# Build outputs
+# --------------------------------------------------
+dist/
+build/
+out/
+ui/.next/
+ui/out/
+.next/
+
+# --------------------------------------------------
+# Test / coverage artifacts
+# --------------------------------------------------
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# --------------------------------------------------
+# Chrome extension / browser build artifacts
+# --------------------------------------------------
+*.crx
+*.pem
+
+# --------------------------------------------------
+# Caches / misc generated files
+# --------------------------------------------------
+.cache/
+.tmp/
+tmp/
+temp/

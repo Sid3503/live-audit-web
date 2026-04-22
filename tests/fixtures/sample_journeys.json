@@ -1,0 +1,15 @@
+{
+  "journeys": [
+    {
+      "type": "signup",
+      "steps": [
+        { "element_id": "cta-get-started-1", "label": "Get Started", "action": "click" },
+        { "element_id": "cta-submit-5", "label": "Sign up", "action": "click" }
+      ],
+      "click_count": 1,
+      "friction_points": [],
+      "severity_score": 0
+    }
+  ]
+}
+

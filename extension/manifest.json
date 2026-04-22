@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "User Journey Auditor",
+  "version": "1.0.0",
+  "description": "AI-powered UX audit tool that maps user journeys and detects friction points.",
+  "icons": {
+    "16": "extension/assets/icons/icon16.png",
+    "48": "extension/assets/icons/icon48.png",
+    "128": "extension/assets/icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "extension/assets/icons/icon16.png",
+      "48": "extension/assets/icons/icon48.png",
+      "128": "extension/assets/icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "extension/background/serviceWorker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["extension/content/domExtractor.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": ["http://localhost:8000/*"]
+}
+

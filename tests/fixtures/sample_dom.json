@@ -1,0 +1,91 @@
+{
+  "url": "https://example.com",
+  "title": "Example Landing",
+  "elements": [
+    {
+      "id": "nav-pricing-0",
+      "text": "Pricing",
+      "tag": "a",
+      "role": "nav",
+      "importance": "secondary",
+      "href": "https://example.com/pricing",
+      "path": "header > nav > a",
+      "visible": true,
+      "position": { "x": 10, "y": 10 }
+    },
+    {
+      "id": "cta-get-started-1",
+      "text": "Get Started",
+      "tag": "a",
+      "role": "cta",
+      "importance": "primary",
+      "href": "https://example.com/signup",
+      "path": "main > section > a",
+      "visible": true,
+      "position": { "x": 80, "y": 180 }
+    },
+    {
+      "id": "link-learn-more-2",
+      "text": "Learn more",
+      "tag": "a",
+      "role": "link",
+      "importance": "secondary",
+      "href": "https://example.com/features",
+      "path": "main > section > a",
+      "visible": true,
+      "position": { "x": 80, "y": 220 }
+    },
+    {
+      "id": "cta-buy-now-3",
+      "text": "Buy now",
+      "tag": "button",
+      "role": "cta",
+      "importance": "primary",
+      "href": null,
+      "path": "main > section > button",
+      "visible": true,
+      "position": { "x": 80, "y": 420 }
+    },
+    {
+      "id": "input-email-4",
+      "text": "Email",
+      "tag": "input",
+      "role": "input",
+      "importance": "secondary",
+      "href": null,
+      "path": "main > form > input",
+      "visible": true,
+      "position": { "x": 80, "y": 520 }
+    },
+    {
+      "id": "cta-submit-5",
+      "text": "Sign up",
+      "tag": "button",
+      "role": "cta",
+      "importance": "primary",
+      "href": null,
+      "path": "main > form > button",
+      "visible": true,
+      "position": { "x": 80, "y": 560 }
+    },
+    {
+      "id": "form-signup-6",
+      "text": "Signup form",
+      "tag": "form",
+      "role": "form",
+      "importance": "secondary",
+      "href": null,
+      "path": "main > form",
+      "visible": true,
+      "position": { "x": 60, "y": 500 }
+    }
+  ],
+  "metadata": {
+    "total_elements": 7,
+    "cta_count": 3,
+    "form_count": 1,
+    "nav_count": 1,
+    "extracted_at": "2026-04-21T00:00:00Z"
+  }
+}
+
