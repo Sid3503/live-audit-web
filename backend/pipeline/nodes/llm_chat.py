@@ -15,15 +15,17 @@ class _Turn(Protocol):
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """You are a UX expert analyzing a website audit. You have access to structured audit data and deep crawl data.
+_SYSTEM_PROMPT = """You are a UX consultant answering questions about a website audit for a product manager or founder.
 
-Answer the user's question using the provided data. Guidelines:
-- Use page titles, navigation links, primary CTAs, and page paths as signals about what the site offers. For example, if nav links include "Marketing Hub" and "Sales Hub", infer those are the product areas.
-- Be direct and specific — reference actual labels, step counts, paths, and CTA counts from the data.
-- It is OK to make reasonable inferences from navigation structure, CTA text, and page titles — just make clear when you're inferring vs. directly quoting data.
-- If the question is completely outside what can be inferred from structure (e.g. pricing amounts), say so in one sentence.
-- Never fabricate specific numbers or claims not supported by the data.
-- Keep answers under 4 sentences."""
+Tone: conversational and direct — plain prose, no bullet points, no headers. Sound like a colleague, not a report.
+
+Answer using the provided audit data and crawl data:
+- Use page titles, nav links, primary CTAs, and page paths as signals about what the site offers. If nav links include "Marketing Hub" and "Sales Hub", those are the product areas — say so directly.
+- Reference actual labels, step counts, paths, and CTA counts from the data when relevant.
+- You may infer from structure (e.g. nav links → product areas). When inferring, say "Based on the navigation..." once — do not repeat the disclaimer for every sentence.
+- If a question is entirely outside what the data covers (e.g. exact pricing amounts), say so in one sentence and pivot to what you can tell them.
+- Never fabricate specific numbers not in the data.
+- Length: 2–3 sentences for detailed questions. 1 sentence for yes/no questions."""
 
 
 def _build_report_context(report: AuditReport) -> str:
@@ -43,16 +45,20 @@ def _build_report_context(report: AuditReport) -> str:
     disputed = [f"  {d.original_rule_id} disputed: {d.dispute_reason}" for d in report.disputed_findings]
     observations = [f"  [{o.category}] {o.observation}" for o in report.llm_observations]
 
+    es = report.element_summary
+    cta_bench = "low" if es.cta_count < 2 else "high" if es.cta_count > 8 else "normal"
+    nav_bench = "low" if es.nav_count < 3 else "high" if es.nav_count > 15 else "normal"
+
     return f"""Page: {report.title}
 URL: {report.url}
 Score: {report.overall_score}/100 ({report.qualitative_label})
-Elements: {report.element_summary.total_elements} | CTAs: {report.element_summary.cta_count} | Forms: {report.element_summary.form_count} | Nav: {report.element_summary.nav_count}
+Elements: {es.total_elements} total | CTAs: {es.cta_count} ({cta_bench}, typical 2–8) | Forms: {es.form_count} | Nav: {es.nav_count} ({nav_bench}, typical 3–15)
 
 Page Structure Snapshot:
 - Primary CTAs: {', '.join(report.nav_snapshot.primary_ctas) if report.nav_snapshot and report.nav_snapshot.primary_ctas else '(none)'}
 - Navigation Links: {', '.join(report.nav_snapshot.nav_links) if report.nav_snapshot and report.nav_snapshot.nav_links else '(none)'}
 
-Journeys:
+Journeys (steps marked * are key actions in the path):
 {chr(10).join(journey_lines) or '  (none detected)'}
 
 Disputed findings:
@@ -61,7 +67,7 @@ Disputed findings:
 Observations:
 {chr(10).join(observations) or '  (none)'}
 
-Recommendations:
+Recommendations (ordered by impact):
 {chr(10).join(f'  - {r}' for r in report.recommendations) or '  (none)'}
 
 Summary: {report.summary}"""

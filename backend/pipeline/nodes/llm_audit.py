@@ -42,33 +42,33 @@ class LLMValidatedOutput(BaseModel):
     suggested_questions: list[str] = Field(default_factory=list)
 
 
-_SYSTEM_PROMPT = """You are a senior UX auditor reviewing automated analysis of a webpage.
+_SYSTEM_PROMPT = """You are a senior UX auditor reviewing automated heuristic analysis of a webpage.
 
 You will receive:
-- Page metadata (title, URL, element counts)
+- Page metadata (title, URL, element counts with benchmarks)
 - Detected user journeys with steps and click counts
-- Heuristic friction findings (rule ID, severity, description, confidence)
+- Heuristic friction findings (rule ID, severity, description)
 
 Your tasks:
-1. VALIDATE each friction finding — if a finding is likely a false positive, dispute it.
-2. OBSERVE — add 2-3 UX observations that heuristics cannot detect.
-3. SUMMARIZE — write 2 sentences summarizing real UX health.
-4. RECOMMEND — write 2-5 specific actions.
-5. QUESTIONS — Provide 3 insightful follow-up questions about this exact page that a user might want to ask you (the AI) in the chat panel. Make them specifically related to the extracted content and context.
+1. VALIDATE each friction finding — dispute findings that are clear false positives. Only dispute when you have explicit reasoning. Do NOT dispute findings just because the score looks high. Copy the rule_id exactly as it appears in the input.
+2. OBSERVE — add 2-3 UX observations that heuristics cannot detect (trust signals, copy clarity, cognitive load, visual hierarchy, accessibility). Be specific to this page, not generic advice.
+3. SUMMARIZE — write 2 sentences on the page's real UX health. Lead with the most important finding.
+4. RECOMMEND — write 2-5 specific, actionable improvements ordered by impact (highest impact first).
+5. QUESTIONS — provide exactly 3 follow-up questions a product manager might want to ask about this specific page. Tailor them to the actual journeys and friction found, not generic UX questions.
 
 Critical rules:
-- Only dispute findings when you have clear reasoning.
-- Respond ONLY with valid JSON. No markdown, no preamble.
+- Respond ONLY with valid JSON. No markdown fences, no preamble, no trailing explanation.
+- Do not invent rule_ids — copy them exactly from the friction findings list.
 
-JSON schema you must return:
+JSON schema (return exactly this structure):
 {
-  "summary": "string",
+  "summary": "string (2 sentences)",
   "recommendations": ["string", ...],
   "disputed_findings": [
-    {"rule_id": "string", "severity": "string", "dispute_reason": "string"}
+    {"rule_id": "COPY_EXACTLY_FROM_INPUT", "severity": "low|medium|high|critical", "dispute_reason": "string"}
   ],
   "observations": [
-    {"observation": "string", "severity": "low|medium|high", "category": "string"}
+    {"observation": "string", "severity": "low|medium|high", "category": "trust|cognitive_load|hierarchy|copy|accessibility|conversion"}
   ],
   "suggested_questions": ["string", "string", "string"]
 }"""
@@ -79,7 +79,7 @@ def _build_audit_prompt(state: PipelineState, overall_score: int) -> str:  # noq
     sample_texts = [
         e.text for e in state.extracted_page.elements
         if e.role.value in ("cta", "nav") and e.text
-    ][:12]
+    ][:25]
 
     page_friction_items = [
         f"  rule_id={fp.type} | severity={fp.severity.value} | scope=PAGE | description={fp.description}"
@@ -88,7 +88,7 @@ def _build_audit_prompt(state: PipelineState, overall_score: int) -> str:  # noq
 
     friction_items = [
         f"  rule_id={fp.type} | severity={fp.severity.value} | "
-        f"journey={j.type.value} | confidence={j.confidence:.1f} | "
+        f"journey={j.type.value} | journey_conf={j.confidence:.1f} | "
         f"description={fp.description}"
         for j in state.journeys
         for fp in j.friction_points
@@ -98,10 +98,14 @@ def _build_audit_prompt(state: PipelineState, overall_score: int) -> str:  # noq
 
     journey_summaries = [
         f"  [{j.type.value}] {len(j.steps)} steps, {j.click_count} clicks, "
-        f"method={j.detection_method.value}, confidence={j.confidence:.1f}\n"
+        f"method={j.detection_method.value}, journey_conf={j.confidence:.1f}\n"
         f"    path: {' → '.join(s.label[:40] for s in j.steps[:5])}"
         for j in state.journeys
     ]
+
+    # Benchmark thresholds for element counts (same as rule_config.py)
+    cta_bench = "low" if meta.cta_count < 2 else "high" if meta.cta_count > 8 else "normal"
+    nav_bench = "low" if meta.nav_count < 3 else "high" if meta.nav_count > 15 else "normal"
 
     # Surface extraction quality so the LLM calibrates confidence appropriately
     extraction_warnings: list[str] = []
@@ -121,19 +125,18 @@ def _build_audit_prompt(state: PipelineState, overall_score: int) -> str:  # noq
 
     return f"""Page: {state.extracted_page.title}
 URL: {state.extracted_page.url}
-Score (pre-validation): {overall_score}/100
-Elements: {meta.total_elements} total | {meta.cta_count} CTAs | {meta.form_count} forms | {meta.nav_count} nav links
+Elements: {meta.total_elements} total | {meta.cta_count} CTAs ({cta_bench}, typical 2–8) | {meta.form_count} forms | {meta.nav_count} nav links ({nav_bench}, typical 3–15)
 
-{extraction_note + chr(10) if extraction_note else ""}Key interactive elements found:
+{extraction_note + chr(10) if extraction_note else ""}Sample interactive elements (up to 25 CTAs/nav shown — * = key action):
 {chr(10).join(f'  - {t}' for t in sample_texts) or '  (none)'}
 
-Detected journeys:
+Detected journeys (journey_conf = path detection confidence, NOT finding severity):
 {chr(10).join(journey_summaries) or '  (none detected)'}
 
-Heuristic friction findings to validate:
-{chr(10).join(all_friction_items) or '  (none)'}
+Heuristic friction findings to validate (copy rule_id exactly when disputing):
+{chr(10).join(all_friction_items) or '  (none — no findings to validate)'}
 
-Return your JSON validation now."""
+Respond ONLY with the JSON object. No preamble, no explanation, no markdown."""
 
 
 def _repair_json(text: str) -> str:
