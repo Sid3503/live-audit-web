@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, ValidationError
 
+from backend.core.cta_filter import is_meaningful_cta
 from backend.core.score_calculator import compute_overall_score, compute_page_floor, score_to_label
 from backend.models.report import AuditReport, DisputedFinding, LLMObservation, NavSnapshot
 from backend.pipeline.nodes.llm_provider import invoke_with_fallback, invoke_with_vision
@@ -273,6 +274,11 @@ def llm_audit_node(state: PipelineState) -> PipelineState:
 
     # Build nav snapshot for intermediate results surface
     elements = state.extracted_page.elements
+    _FORM_SIGNALS = frozenset({
+        "submit", "send", "subscribe", "register", "sign up", "sign in",
+        "create account", "get started", "book", "request", "apply", "contact",
+        "join", "get access", "try", "start", "download",
+    })
     nav_snapshot = NavSnapshot(
         primary_ctas=[
             e.text[:50] for e in elements
@@ -282,6 +288,17 @@ def llm_audit_node(state: PipelineState) -> PipelineState:
             e.text[:50] for e in elements
             if e.role.value == "nav" and e.text
         ][:10],
+        all_cta_labels=sorted({
+            e.text.strip()[:60] for e in elements
+            if e.role.value == "cta" and e.importance.value != "tertiary"
+            and e.text.strip() and is_meaningful_cta(e.text.strip())
+        })[:25],
+        form_labels=sorted({
+            e.text.strip()[:60] for e in elements
+            if e.role.value == "cta" and e.importance.value != "tertiary"
+            and e.text.strip() and is_meaningful_cta(e.text.strip())
+            and any(sig in e.text.lower() for sig in _FORM_SIGNALS)
+        })[:10],
     )
 
     report = AuditReport(

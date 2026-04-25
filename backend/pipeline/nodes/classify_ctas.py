@@ -16,6 +16,7 @@ import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from backend.core.cta_filter import is_meaningful_cta
 from backend.models.journey import JourneyType
 from backend.pipeline.nodes.llm_provider import invoke_with_fallback
 from backend.pipeline.state import PipelineState
@@ -48,19 +49,31 @@ Return: {{"classifications": [{{"index": 0, "type": "signup"}}, ...]}}"""
 
 def classify_ctas_node(state: PipelineState) -> PipelineState:
     """LLM batch classify primary CTAs not already matched by heuristics."""
-    candidates = [
+    primary_ctas = [
         e for e in state.extracted_page.elements
         if e.role.value == "cta" and e.importance.value == "primary" and e.text.strip()
     ]
+    secondary_ctas = [
+        e for e in state.extracted_page.elements
+        if e.role.value == "cta" and e.importance.value == "secondary"
+        and e.text.strip() and is_meaningful_cta(e.text.strip())
+    ]
+    candidates = primary_ctas + secondary_ctas
+
+    logger.info(
+        "CTA CLASSIFY | primary=%d | secondary_filtered=%d | total=%d candidates",
+        len(primary_ctas),
+        len(secondary_ctas),
+        len(candidates),
+    )
 
     if not candidates:
         return state
 
     label_lines = "\n".join(f"{i}: {e.text.strip()}" for i, e in enumerate(candidates))
     logger.info(
-        "CTA CLASSIFY | sending %d candidates: [%s]",
-        len(candidates),
-        ", ".join(f'"{e.text.strip()[:40]}"' for e in candidates),
+        "CTA CLASSIFY | sending: [%s]",
+        ", ".join(f'"{e.text.strip()[:40]}"({e.importance.value})' for e in candidates),
     )
 
     try:
@@ -68,7 +81,7 @@ def classify_ctas_node(state: PipelineState) -> PipelineState:
             SystemMessage(content=_SYSTEM),
             HumanMessage(content=_PROMPT.format(labels=label_lines)),
         ]
-        raw, provider = invoke_with_fallback(messages, json_mode=True, max_tokens_override=512)
+        raw, provider = invoke_with_fallback(messages, json_mode=True, max_tokens_override=512, temperature=0)
         data = json.loads(raw)
 
         classifications: dict[str, str] = {}

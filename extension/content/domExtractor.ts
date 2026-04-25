@@ -15,7 +15,7 @@ import {
   getCSSPath,
   inferRole,
 } from "./elementParser"
-import { getViewportPosition, isVisible } from "./visibilityDetector"
+import { getViewportPosition, isInViewport, isVisible } from "./visibilityDetector"
 
 function collectFromRoot(
   root: Document | ShadowRoot,
@@ -50,6 +50,7 @@ function collectFromRoot(
         href: (el as HTMLAnchorElement).href || undefined,
         path,
         visible: isVisible(el),
+        in_viewport: isInViewport(el),
         position,
       })
 
@@ -87,9 +88,32 @@ function extractPage(): ExtractedPage {
   }
 }
 
-// Initial extraction
-const page = extractPage()
-chrome.runtime.sendMessage({ type: "EXTRACTED", payload: page })
+/**
+ * Scroll through the full page so Intersection Observer-gated elements are
+ * rendered into the DOM before we extract. Runs once at initial load only.
+ * EXTRACT_NOW skips this — by then lazy content is already in the DOM.
+ */
+async function revealLazyContent(): Promise<void> {
+  const saved = window.scrollY
+  const totalH = document.documentElement.scrollHeight
+  const vpH = window.innerHeight
+  if (totalH <= vpH) return          // single-screen page — nothing to reveal
+
+  const steps = Math.ceil(totalH / vpH)
+  for (let i = 1; i <= steps; i++) {
+    window.scrollTo(0, i * vpH)
+    await new Promise<void>((r) => setTimeout(r, 120))
+  }
+  window.scrollTo(0, saved)          // restore original position
+  await new Promise<void>((r) => setTimeout(r, 250))  // let DOM settle
+}
+
+// Initial extraction — scroll-reveal first so lazy sections are in the DOM
+;(async () => {
+  await revealLazyContent()
+  const page = extractPage()
+  chrome.runtime.sendMessage({ type: "EXTRACTED", payload: page })
+})()
 
 // SPA re-extraction: debounced, triggers on back/forward navigation and significant DOM changes
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -121,3 +145,11 @@ new MutationObserver((mutations) => {
   const nodesAdded = mutations.reduce((n, m) => n + m.addedNodes.length, 0)
   if (nodesAdded > 15) scheduleReExtract()
 }).observe(document.body, { childList: true, subtree: false })
+
+// On-demand re-extraction: service worker sends EXTRACT_NOW at audit trigger time
+// so the audit always operates on a fresh DOM snapshot, not a stale cached one.
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === "EXTRACT_NOW") {
+    sendResponse(extractPage())
+  }
+})

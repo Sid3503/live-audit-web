@@ -59,11 +59,18 @@ def build_nav_graph(page: ExtractedPage) -> NavGraph:
     if not elements:
         return NavGraph(node_ids=[], edges=[], root_id="")
 
-    root = min(
-        (e for e in elements if e.importance.value == "primary"),
-        key=lambda e: e.position.y,
-        default=min(elements, key=lambda e: e.position.y),
-    )
+    # Root selection: prefer a primary CTA visible in the current viewport,
+    # fall back to the globally topmost primary CTA, then topmost non-tertiary.
+    non_tertiary = [e for e in elements if e.importance.value != "tertiary"]
+    primary = [e for e in elements if e.importance.value == "primary"]
+    viewport_primary = [e for e in primary if e.in_viewport]
+
+    if viewport_primary:
+        root = min(viewport_primary, key=lambda e: e.position.y)
+    elif primary:
+        root = min(primary, key=lambda e: e.position.y)
+    else:
+        root = min(non_tertiary or elements, key=lambda e: e.position.y)
 
     edges: list[NavEdge] = []
     for a in elements:

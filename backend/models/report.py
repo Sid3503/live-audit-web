@@ -27,6 +27,8 @@ class NavSnapshot(BaseModel):
 
     primary_ctas: list[str]
     nav_links: list[str]
+    all_cta_labels: list[str] = []
+    form_labels: list[str] = []
 
 
 class FunnelFlow(BaseModel):

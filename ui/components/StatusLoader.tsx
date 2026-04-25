@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react"
 
 const STAGES = [
-  "Extracting DOM elements...",
+  "Scanning live DOM snapshot...",
   "Building navigation graph...",
   "Detecting user journeys...",
   "Scoring friction points...",

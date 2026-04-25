@@ -36,15 +36,33 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         await chrome.storage.local.set({ extracted_page: payload, status: "ready" })
       },
       TRIGGER: async () => {
-        const result = await chrome.storage.local.get(["extracted_page"])
-        if (!result.extracted_page) {
+        // Always re-extract from the live DOM at audit time so the graph/journeys/score
+        // match the screenshot and are not stale from the initial page load.
+        let extracted_page: unknown = null
+        try {
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+          if (tab?.id) {
+            extracted_page = await chrome.tabs.sendMessage(tab.id, { type: "EXTRACT_NOW" })
+          }
+        } catch {
+          // Content script unreachable (chrome:// pages, uninjected frames) — fall back to cache
+        }
+
+        if (!extracted_page) {
+          const stored = await chrome.storage.local.get(["extracted_page"])
+          extracted_page = stored.extracted_page
+        }
+
+        if (!extracted_page) {
           await chrome.storage.local.set({ status: "error", error: "No page data" })
           return
         }
-        await chrome.storage.local.set({ status: "auditing" })
+
+        // Persist fresh snapshot so the chat and other consumers see the same data
+        await chrome.storage.local.set({ extracted_page, status: "auditing" })
         try {
           const screenshot = await captureScreenshot()
-          const report = await callAuditAPI({ page: result.extracted_page, screenshot })
+          const report = await callAuditAPI({ page: extracted_page, screenshot })
           await chrome.storage.local.set({ report, status: "done" })
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : "Unknown error"

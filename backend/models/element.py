@@ -33,6 +33,7 @@ class PageElement(BaseModel):
     href: Optional[str] = None
     path: str
     visible: bool
+    in_viewport: bool = False
     position: Position
 
 

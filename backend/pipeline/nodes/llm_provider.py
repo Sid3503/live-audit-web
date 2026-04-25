@@ -53,6 +53,7 @@ def invoke_with_fallback(
     *,
     json_mode: bool = False,
     max_tokens_override: int | None = None,
+    temperature: float | None = None,
 ) -> tuple[str, Provider]:
     """
     Invoke LLM with OpenAI as primary and Google as fallback.
@@ -79,6 +80,9 @@ def invoke_with_fallback(
                 client = _openai_client(json_mode)
             else:
                 client = _google_client(json_mode)
+
+            if temperature is not None:
+                client = client.bind(temperature=temperature)
 
             if max_tokens_override is not None:
                 if name == "openai":

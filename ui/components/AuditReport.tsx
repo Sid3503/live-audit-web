@@ -266,7 +266,7 @@ export default function AuditReport({ report, rawReport }: Props) {
       </div>
 
       {/* Element counts */}
-      <ElementSummary metadata={report.element_summary} />
+      <ElementSummary metadata={report.element_summary} navSnapshot={report.nav_snapshot} />
 
       {/* Navigation structure — intermediate results */}
       {report.nav_snapshot && <NavStructure snapshot={report.nav_snapshot} />}

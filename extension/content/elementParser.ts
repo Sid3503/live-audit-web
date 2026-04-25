@@ -19,6 +19,7 @@ export interface PageElement {
   href?: string
   path: string
   visible: boolean
+  in_viewport: boolean
   position: Position
 }
 
@@ -94,12 +95,24 @@ export const CTA_TEXT_SIGNALS = new Set<string>([
   "start trial",
   "free trial",
   "get access",
-  "log in",
-  "sign in",
-  "login",
   "get free",
   "start for free",
   "join free",
+  "try for free",
+  "for free",
+])
+
+// Auth actions — classified as cta role but tertiary importance so they never
+// become journey roots or primary conversion signals.
+export const AUTH_SIGNALS = new Set<string>([
+  "log in",
+  "login",
+  "sign in",
+  "signin",
+  "log out",
+  "logout",
+  "sign out",
+  "signout",
 ])
 
 type RoleRule = {
@@ -115,7 +128,8 @@ const ROLE_INFERENCE_RULES: RoleRule[] = [
       const isButtonish = ["button"].includes(tag) || (tag === "input" && ["submit", "button"].includes(type))
       const ariaRole = (el.getAttribute("role") || "").toLowerCase()
       const roleButtonish = ariaRole === "button"
-      const byText = CTA_TEXT_SIGNALS.has(text.toLowerCase().trim())
+      const lower = text.toLowerCase().trim()
+      const byText = CTA_TEXT_SIGNALS.has(lower) || AUTH_SIGNALS.has(lower)
       return isButtonish || roleButtonish || byText
     },
   },
@@ -175,6 +189,10 @@ export function generateId(text: string, tag: string, index: number): string {
 
 export function detectImportance(text: string): ElementImportance {
   const normalized = text.toLowerCase().trim()
+  if (AUTH_SIGNALS.has(normalized)) return "tertiary"
+  for (const signal of AUTH_SIGNALS) {
+    if (normalized.includes(signal)) return "tertiary"
+  }
   if (CTA_TEXT_SIGNALS.has(normalized)) return "primary"
   for (const signal of CTA_TEXT_SIGNALS) {
     if (normalized.includes(signal)) return "primary"

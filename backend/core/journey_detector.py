@@ -1,11 +1,14 @@
 """BFS-based journey detection — three-layer signal model: signals → regex → LLM classification."""
 
+import logging
 from collections import deque
 
 from backend.config.journey_targets import INTENT_PATTERNS, JOURNEY_ROLE_CONSTRAINTS, JOURNEY_TARGETS
 from backend.models.element import ExtractedPage, PageElement
 from backend.models.journey import DetectionMethod, JourneyStep, JourneyType, UserJourney
 from backend.pipeline.state import NavGraph
+
+logger = logging.getLogger(__name__)
 
 JOURNEY_ELIGIBLE_ROLES = {"cta", "nav", "link"}
 _MAX_PATH_DEPTH = 6
@@ -158,6 +161,15 @@ def detect_journeys(
         }
 
         all_targets = heuristic_targets | llm_targets
+
+        logger.info(
+            "TARGETS | %-8s | heuristic=%d [%s] | llm=%d [%s]",
+            journey_type.value,
+            len(heuristic_targets),
+            ", ".join(f'"{elements_by_id[i].text[:25]}"' for i in list(heuristic_targets)[:3] if i in elements_by_id),
+            len(llm_targets),
+            ", ".join(f'"{elements_by_id[i].text[:25]}"' for i in list(llm_targets)[:3] if i in elements_by_id),
+        )
 
         if not all_targets:
             continue

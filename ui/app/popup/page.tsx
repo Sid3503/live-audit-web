@@ -101,6 +101,9 @@ export default function PopupPage() {
             <p className="text-indigo-200 text-sm leading-relaxed">
               Scan this page for dead ends, missing forms, buried CTAs, and friction that drives users away.
             </p>
+            <p className="text-indigo-300 text-[11px] mt-1.5 leading-relaxed">
+              Full-page audit — analyzes all elements regardless of scroll position.
+            </p>
 
             {/* Stat chips */}
             <div className="flex gap-2 mt-5 flex-wrap">
@@ -162,7 +165,7 @@ export default function PopupPage() {
               onClick={handleAudit}
               className="group w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
             >
-              Audit This Page
+              Full Page Audit
               <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
