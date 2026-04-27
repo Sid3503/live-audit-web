@@ -16,6 +16,7 @@ import {
   inferRole,
 } from "./elementParser"
 import { getViewportPosition, isInViewport, isVisible } from "./visibilityDetector"
+import { startVisualization, stopVisualization, jumpToStep } from "./journeyVisualizer"
 
 function collectFromRoot(
   root: Document | ShadowRoot,
@@ -41,8 +42,11 @@ function collectFromRoot(
       const tag = el.tagName.toLowerCase()
       const finalRole = inferRole({ el, baseRole: role, text, tag, path })
 
+      const id = generateId(text, tag, indexRef.value++)
+      ;(el as HTMLElement).dataset.ujaId = id
+
       elements.push({
-        id: generateId(text, tag, indexRef.value++),
+        id,
         text,
         tag,
         role: finalRole,
@@ -151,5 +155,23 @@ new MutationObserver((mutations) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "EXTRACT_NOW") {
     sendResponse(extractPage())
+    return
+  }
+
+  if (message.type === "VISUALIZE") {
+    startVisualization(message.journey)
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (message.type === "STOP_VISUALIZATION") {
+    stopVisualization()
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (message.type === "VISUALIZE_STEP") {
+    jumpToStep(message.journey, message.step)
+    sendResponse({ ok: true })
   }
 })

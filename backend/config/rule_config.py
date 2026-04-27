@@ -87,6 +87,110 @@ FRICTION_RULES: list[FrictionRule] = [
         severity=Severity.MEDIUM,
         type="dead-end",
     ),
+    # New rules for expanded journey types
+    FrictionRule(
+        id="login-buried",
+        description="Login link is not in the primary navigation — returning users must hunt for it",
+        check=lambda j, p: (
+            j.type.value == "login"
+            and not any(
+                e.role.value == "nav" and e.id in {s.element_id for s in j.steps}
+                for e in p.elements
+            )
+        ),
+        severity=Severity.MEDIUM,
+        type="buried-action",
+    ),
+    FrictionRule(
+        id="demo-no-video-or-form",
+        description="Demo journey has no video embed or request form — demo content may be missing",
+        check=lambda j, p: (
+            j.type.value == "demo"
+            and p.metadata.form_count == 0
+        ),
+        severity=Severity.MEDIUM,
+        type="missing-demo-asset",
+    ),
+    FrictionRule(
+        id="support-no-form",
+        description="Support journey has no contact form — users cannot submit help requests",
+        check=lambda j, p: (
+            j.type.value == "support"
+            and p.metadata.form_count == 0
+        ),
+        severity=Severity.HIGH,
+        type="missing-form",
+    ),
+    FrictionRule(
+        id="upgrade-no-pricing-link",
+        description="Upgrade CTA exists but no pricing page link found — users cannot compare plans before upgrading",
+        check=lambda j, p: (
+            j.type.value == "upgrade"
+            and not any(
+                "pricing" in e.text.lower() or "plans" in e.text.lower()
+                for e in p.elements
+                if e.visible and e.role.value in {"nav", "cta", "link"}
+            )
+        ),
+        severity=Severity.MEDIUM,
+        type="missing-context",
+    ),
+    FrictionRule(
+        id="newsletter-no-input",
+        description="Newsletter subscribe CTA found but no email input field nearby",
+        check=lambda j, p: (
+            j.type.value == "newsletter"
+            and not any(e.role.value == "input" and e.visible for e in p.elements)
+        ),
+        severity=Severity.HIGH,
+        type="missing-form",
+    ),
+    FrictionRule(
+        id="docs-link-in-footer-only",
+        description="Documentation is only linked from the footer — developers may miss it",
+        check=lambda j, p: (
+            j.type.value == "documentation"
+            and all(
+                e.position.y > (max((el.position.y for el in p.elements), default=0) * 0.75)
+                for e in p.elements
+                if e.id in {s.element_id for s in j.steps}
+            )
+            and len(j.steps) > 0
+        ),
+        severity=Severity.LOW,
+        type="buried-action",
+    ),
+    FrictionRule(
+        id="cart-no-checkout",
+        description="Cart journey detected but no checkout CTA found — purchase flow may be incomplete",
+        check=lambda j, p: (
+            j.type.value == "cart"
+            and not any(
+                any(kw in e.text.lower() for kw in ["checkout", "pay", "buy now", "proceed"])
+                for e in p.elements
+                if e.visible and e.role.value == "cta"
+            )
+        ),
+        severity=Severity.HIGH,
+        type="dead-end",
+    ),
+    FrictionRule(
+        id="onboarding-too-deep",
+        description="Onboarding journey requires more than 3 clicks — first-run experience may be too complex",
+        check=lambda j, _: j.type.value == "onboarding" and j.click_count > 3,
+        severity=Severity.MEDIUM,
+        type="navigation-depth",
+    ),
+    FrictionRule(
+        id="search-no-input",
+        description="Search journey detected but no search input element found on page",
+        check=lambda j, p: (
+            j.type.value == "search"
+            and not any(e.role.value == "input" and e.visible for e in p.elements)
+        ),
+        severity=Severity.HIGH,
+        type="missing-form",
+    ),
 ]
 
 PAGE_FRICTION_RULES: list[PageFrictionRule] = [

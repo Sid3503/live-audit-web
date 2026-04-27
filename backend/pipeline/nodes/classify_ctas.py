@@ -33,7 +33,16 @@ Journey types:
 - contact: requesting/booking a demo, talking to sales, getting in touch
 - purchase: buying, checking out, adding to cart, upgrading to paid
 - explore: learning more, discovering features, watching a tour, reading about the product
-- none: utility actions — login, logout, search, menu, close, share, language switch, legal links
+- login: signing in, logging in, accessing an existing account
+- demo: watching a product demo video, viewing a live demo
+- support: getting help, FAQ, knowledge base, submitting a ticket
+- onboarding: getting started guide, quick start, first steps, setup wizard
+- cart: add to cart, view cart, shopping bag
+- upgrade: upgrading a plan, going pro, unlocking premium
+- newsletter: subscribing to email updates, joining a newsletter
+- documentation: reading API docs, developer guides, reference docs
+- search: searching site content, finding products or articles
+- none: utility actions — menu, close, share, language switch, legal links
 
 Rules:
 - Classify by INTENT, not just keywords. "Get Notion free" = signup. "Talk to an expert" = contact.

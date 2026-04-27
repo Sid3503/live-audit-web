@@ -29,6 +29,20 @@ async function captureScreenshot(): Promise<string | null> {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  const msgType = (message as { type?: string })?.type
+
+  // VISUALIZE and STOP_VISUALIZATION are forwarded directly to the active tab's content script
+  if (msgType === "VISUALIZE" || msgType === "STOP_VISUALIZATION" || msgType === "VISUALIZE_STEP") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs[0]?.id
+      if (!tabId) { sendResponse({ ok: false, error: "no active tab" }); return }
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        sendResponse(response ?? { ok: true })
+      })
+    })
+    return true  // keep channel open for async sendResponse
+  }
+
   return routeMessage(
     message,
     {

@@ -25,6 +25,51 @@ export default function PopupPage() {
   const [state, setState] = useState<AppState>("idle")
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState<string>("")
+  const [activeJourney, setActiveJourney] = useState<any | null>(null)
+  const [activeStep, setActiveStep] = useState<number>(0)
+
+  function handleStartVisualize(journey: any) {
+    setActiveJourney(journey)
+    setActiveStep(0)
+    if (isChromeAvailable()) {
+      chrome.runtime.sendMessage({ type: "VISUALIZE", journey })
+    }
+  }
+
+  function handleStepNext() {
+    if (!activeJourney) return
+    const next = Math.min(activeStep + 1, activeJourney.steps.length - 1)
+    setActiveStep(next)
+    if (isChromeAvailable()) {
+      chrome.runtime.sendMessage({ type: "VISUALIZE_STEP", journey: activeJourney, step: next })
+    }
+  }
+
+  function handleStepPrev() {
+    if (!activeJourney) return
+    const prev = Math.max(activeStep - 1, 0)
+    setActiveStep(prev)
+    if (isChromeAvailable()) {
+      chrome.runtime.sendMessage({ type: "VISUALIZE_STEP", journey: activeJourney, step: prev })
+    }
+  }
+
+  function handleStepJump(index: number) {
+    if (!activeJourney) return
+    const clamped = Math.max(0, Math.min(index, activeJourney.steps.length - 1))
+    setActiveStep(clamped)
+    if (isChromeAvailable()) {
+      chrome.runtime.sendMessage({ type: "VISUALIZE_STEP", journey: activeJourney, step: clamped })
+    }
+  }
+
+  function handleStopVisualize() {
+    setActiveJourney(null)
+    setActiveStep(0)
+    if (isChromeAvailable()) {
+      chrome.runtime.sendMessage({ type: "STOP_VISUALIZATION" })
+    }
+  }
 
   useEffect(() => {
     if (!isChromeAvailable()) return
@@ -188,7 +233,17 @@ export default function PopupPage() {
       )}
       {state === "done" && report && (
         <div className="animate-fade-in-up">
-          <AuditReport report={report as any} rawReport={report} />
+          <AuditReport
+            report={report as any}
+            rawReport={report}
+            activeJourney={activeJourney}
+            activeStep={activeStep}
+            onStartVisualize={handleStartVisualize}
+            onStepNext={handleStepNext}
+            onStepPrev={handleStepPrev}
+            onStepJump={handleStepJump}
+            onStopVisualize={handleStopVisualize}
+          />
         </div>
       )}
       {state === "about" && (

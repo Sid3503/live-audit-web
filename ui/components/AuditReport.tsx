@@ -45,8 +45,15 @@ interface AuditReportData {
 }
 
 interface Props {
-  report: AuditReportData
-  rawReport: Record<string, unknown>
+  report:            AuditReportData
+  rawReport:         Record<string, unknown>
+  activeJourney?:    any
+  activeStep?:       number
+  onStartVisualize?: (journey: any) => void
+  onStepNext?:       () => void
+  onStepPrev?:       () => void
+  onStepJump?:       (index: number) => void
+  onStopVisualize?:  () => void
 }
 
 // ─── Funnel analysis types ────────────────────────────────────────────────────
@@ -176,7 +183,17 @@ function DeepAnalysisSection({ crawl }: { crawl: CrawlReport }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function AuditReport({ report, rawReport }: Props) {
+export default function AuditReport({
+  report,
+  rawReport,
+  activeJourney,
+  activeStep = 0,
+  onStartVisualize,
+  onStepNext,
+  onStepPrev,
+  onStepJump,
+  onStopVisualize,
+}: Props) {
   const [crawl, setCrawl] = useState<CrawlReport | null>(null)
   const [deepStatus, setDeepStatus] = useState<"idle" | "running" | "done" | "error">("idle")
   const [currentPage, setCurrentPage] = useState(0)
@@ -303,7 +320,19 @@ export default function AuditReport({ report, rawReport }: Props) {
                 <p className="text-xs text-gray-600">This page may be search or content-driven, with no standard CTA/nav path to a key action.</p>
               </div>
             ) : (
-              confident.map((j: any, i: number) => <JourneyCard key={i} journey={j} />)
+              confident.map((j: any, i: number) => (
+                <JourneyCard
+                  key={i}
+                  journey={j}
+                  isActive={activeJourney?.type === j.type}
+                  activeStep={activeJourney?.type === j.type ? activeStep : 0}
+                  onStartVisualize={onStartVisualize ?? (() => {})}
+                  onStepNext={onStepNext ?? (() => {})}
+                  onStepPrev={onStepPrev ?? (() => {})}
+                  onStepJump={onStepJump ?? (() => {})}
+                  onStopVisualize={onStopVisualize ?? (() => {})}
+                />
+              ))
             )}
             {uncertain.length > 0 && (
               <details className="mx-5 mb-4 group">
@@ -311,7 +340,19 @@ export default function AuditReport({ report, rawReport }: Props) {
                   <span className="w-3.5 h-3.5 border border-gray-200 rounded-none flex items-center justify-center text-[9px] group-open:rotate-90 transition-transform">▶</span>
                   {uncertain.length} low-confidence detection{uncertain.length > 1 ? "s" : ""} (below 50%)
                 </summary>
-                {uncertain.map((j: any, i: number) => <JourneyCard key={i} journey={j} />)}
+                {uncertain.map((j: any, i: number) => (
+                  <JourneyCard
+                    key={i}
+                    journey={j}
+                    isActive={activeJourney?.type === j.type}
+                    activeStep={activeJourney?.type === j.type ? activeStep : 0}
+                    onStartVisualize={onStartVisualize ?? (() => {})}
+                    onStepNext={onStepNext ?? (() => {})}
+                    onStepPrev={onStepPrev ?? (() => {})}
+                    onStepJump={onStepJump ?? (() => {})}
+                    onStopVisualize={onStopVisualize ?? (() => {})}
+                  />
+                ))}
               </details>
             )}
           </>

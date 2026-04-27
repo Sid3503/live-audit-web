@@ -6,6 +6,7 @@
 import { useState } from "react"
 import FrictionBadge from "./FrictionBadge"
 import Tooltip from "./Tooltip"
+import JourneyReplayPanel from "./JourneyReplayPanel"
 
 interface JourneyStep {
   element_id: string
@@ -32,7 +33,14 @@ interface Journey {
 }
 
 interface Props {
-  journey: Journey
+  journey:          Journey
+  isActive:         boolean
+  activeStep:       number
+  onStartVisualize: (journey: Journey) => void
+  onStepNext:       () => void
+  onStepPrev:       () => void
+  onStepJump:       (index: number) => void
+  onStopVisualize:  () => void
 }
 
 const JOURNEY_COLORS: Record<string, string> = {
@@ -66,11 +74,20 @@ const ACTION_LABELS: Record<string, string> = {
 }
 
 function clickLabel(count: number): string {
-  if (count === 0) return "Visible on page"
+  if (count === 0) return "Immediately accessible"
   return count === 1 ? "1 click" : `${count} clicks`
 }
 
-export default function JourneyCard({ journey }: Props) {
+export default function JourneyCard({
+  journey,
+  isActive,
+  activeStep,
+  onStartVisualize,
+  onStepNext,
+  onStepPrev,
+  onStepJump,
+  onStopVisualize,
+}: Props) {
   const [expanded, setExpanded] = useState(false)
   const visibleSteps = expanded ? journey.steps : journey.steps.slice(0, 4)
   const method = journey.detection_method ?? "text_match"
@@ -117,17 +134,28 @@ export default function JourneyCard({ journey }: Props) {
             </span>
           </Tooltip>
         </div>
-        <Tooltip
-          text={
-            journey.click_count === 0
-              ? "Immediately visible — no clicking needed to reach this action."
-              : `A user must click ${journey.click_count} time${journey.click_count > 1 ? "s" : ""} to reach this goal. Fewer = less friction.`
-          }
-          width={192}
-         
-        >
-          <span className="text-xs font-medium text-gray-600 shrink-0 cursor-default">{clickLabel(journey.click_count)}</span>
-        </Tooltip>
+        <div className="flex items-center gap-2 shrink-0">
+          <Tooltip
+            text={
+              journey.click_count === 0
+                ? "Immediately accessible — no clicking needed to reach this action."
+                : `A user must click ${journey.click_count} time${journey.click_count > 1 ? "s" : ""} to reach this goal. Fewer = less friction.`
+            }
+            width={192}
+          >
+            <span className="text-xs font-medium text-gray-600 cursor-default">{clickLabel(journey.click_count)}</span>
+          </Tooltip>
+          <button
+            onClick={() => isActive ? onStopVisualize() : onStartVisualize(journey)}
+            className={`text-[10px] font-mono px-2 py-0.5 rounded-none border transition-colors ${
+              isActive
+                ? "bg-blue-100 border-blue-300 text-blue-600"
+                : "bg-zinc-100 border-zinc-300 text-zinc-500 hover:text-zinc-700 hover:border-zinc-400"
+            }`}
+          >
+            {isActive ? "stop" : "visualize →"}
+          </button>
+        </div>
       </div>
 
       {/* Key actions summary */}
@@ -204,14 +232,26 @@ export default function JourneyCard({ journey }: Props) {
         </div>
       )}
 
-      {/* Friction issues */}
-      {journey.friction_points.length > 0 && (
+      {/* Friction issues — only show when replay panel is not active */}
+      {!isActive && journey.friction_points.length > 0 && (
         <div className="px-4 pb-4 pt-3 flex flex-col gap-2 border-t border-gray-200 bg-red-100">
           <p className="text-[10px] font-semibold text-red-600/80 uppercase tracking-wider mb-1">Issues</p>
           {journey.friction_points.map((fp, i) => (
             <FrictionBadge key={i} point={fp} />
           ))}
         </div>
+      )}
+
+      {/* Replay panel — replaces friction section when active */}
+      {isActive && (
+        <JourneyReplayPanel
+          journey={journey}
+          currentStep={activeStep}
+          onNext={onStepNext}
+          onPrev={onStepPrev}
+          onExit={onStopVisualize}
+          onJumpTo={onStepJump}
+        />
       )}
     </div>
   )

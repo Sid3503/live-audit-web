@@ -16,12 +16,26 @@ class JourneyType(str, Enum):
     PRICING = "pricing"
     CONTACT = "contact"
     PURCHASE = "purchase"
+    LOGIN = "login"
+    DEMO = "demo"
+    SUPPORT = "support"
+    ONBOARDING = "onboarding"
+    CART = "cart"
+    UPGRADE = "upgrade"
+    NEWSLETTER = "newsletter"
+    DOCUMENTATION = "documentation"
+    SEARCH = "search"
 
 
 class DetectionMethod(str, Enum):
     BFS_GRAPH = "bfs_graph"
     TEXT_MATCH = "text_match"
     LLM_CLASSIFIED = "llm_classified"
+    NAV_DIRECT = "nav_direct"
+    FOOTER_DIRECT = "footer_direct"
+    FORM_PROXIMITY = "form_proximity"
+    SEARCH_DIRECT = "search_direct"
+    CHAIN_DETECTED = "chain_detected"
 
 
 class JourneyStep(BaseModel):
