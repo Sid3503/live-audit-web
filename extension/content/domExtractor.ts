@@ -18,6 +18,46 @@ import {
 import { getViewportPosition, isInViewport, isVisible } from "./visibilityDetector"
 import { startVisualization, stopVisualization, jumpToStep } from "./journeyVisualizer"
 
+const ONCLICK_HREF_RE = /(?:window\.)?location(?:\.href)?\s*=\s*['"`]([^'"`]+)['"`]/
+
+function resolveHref(el: Element): string | undefined {
+  // 1. Native <a href> — browser already resolves to absolute URL
+  const native = (el as HTMLAnchorElement).href
+  if (native && !native.startsWith("javascript:")) return native
+
+  // 2. data-href / data-url / data-link — common in React/Vue SPAs
+  const dataAttr =
+    el.getAttribute("data-href") ??
+    el.getAttribute("data-url") ??
+    el.getAttribute("data-link") ??
+    el.getAttribute("data-to")
+  if (dataAttr && !dataAttr.startsWith("javascript:")) {
+    try { return new URL(dataAttr, location.href).href } catch { return dataAttr }
+  }
+
+  // 3. Closest parent anchor — <a href="/pricing"><button>See plans</button></a>
+  const parentAnchor = el.closest("a[href]")
+  if (parentAnchor) {
+    const parentHref = (parentAnchor as HTMLAnchorElement).href
+    if (parentHref && !parentHref.startsWith("javascript:")) return parentHref
+  }
+
+  // 4. formaction on submit buttons — overrides the form's action URL
+  const formAction = el.getAttribute("formaction")
+  if (formAction) {
+    try { return new URL(formAction, location.href).href } catch { return formAction }
+  }
+
+  // 5. Simple onclick pattern: location.href = '/path' or window.location = '/path'
+  const onclick = el.getAttribute("onclick") ?? ""
+  const match = onclick.match(ONCLICK_HREF_RE)
+  if (match) {
+    try { return new URL(match[1], location.href).href } catch { return match[1] }
+  }
+
+  return undefined
+}
+
 function collectFromRoot(
   root: Document | ShadowRoot,
   seen: WeakSet<Element>,
@@ -51,7 +91,7 @@ function collectFromRoot(
         tag,
         role: finalRole,
         importance: detectImportance(text),
-        href: (el as HTMLAnchorElement).href || undefined,
+        href: resolveHref(el),
         path,
         visible: isVisible(el),
         in_viewport: isInViewport(el),
