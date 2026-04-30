@@ -283,11 +283,13 @@ def llm_audit_node(state: PipelineState) -> PipelineState:
         primary_ctas=[
             e.text[:50] for e in elements
             if e.role.value == "cta" and e.importance.value == "primary" and e.text
-        ][:5],
+        ][:8],
         nav_links=[
             e.text[:50] for e in elements
             if e.role.value == "nav" and e.text
-        ][:10],
+            and not re.match(r"^open .{0,35}(menu|dropdown|nav)", e.text, re.IGNORECASE)
+            and not re.match(r"^(back to home|back to top|scroll to)\b", e.text, re.IGNORECASE)
+        ][:20],
         all_cta_labels=sorted({
             e.text.strip()[:60] for e in elements
             if e.role.value == "cta" and e.importance.value != "tertiary"
@@ -295,9 +297,7 @@ def llm_audit_node(state: PipelineState) -> PipelineState:
         })[:25],
         form_labels=sorted({
             e.text.strip()[:60] for e in elements
-            if e.role.value == "cta" and e.importance.value != "tertiary"
-            and e.text.strip() and is_meaningful_cta(e.text.strip())
-            and any(sig in e.text.lower() for sig in _FORM_SIGNALS)
+            if e.role.value == "form" and e.text.strip()
         })[:10],
     )
 

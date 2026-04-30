@@ -39,6 +39,26 @@ export interface ExtractedPage {
 }
 
 export const ROLE_SELECTOR_MAP: Record<ElementRole, string[]> = {
+  // nav MUST come before cta — buttons inside nav/header are captured here first
+  // so the seen-WeakSet dedup prevents them from being reclassified as CTAs
+  nav: [
+    "nav a",
+    "nav button",
+    "header nav a",           // only links inside an explicit <nav> within <header>
+    "header nav button",
+    "header [role='menuitem']",
+    "[role='navigation'] a",
+    "[role='navigation'] button",
+    ".nav a",
+    ".navbar a",
+    ".navbar button",
+    "[role='menubar'] a",
+    "[role='menubar'] [role='menuitem']",
+    "[role='menu'] a",
+    "[role='menuitem']",
+    "[role='tab']",
+    "aside nav a",
+  ],
   cta: [
     "button",
     "[role='button']",
@@ -60,19 +80,16 @@ export const ROLE_SELECTOR_MAP: Record<ElementRole, string[]> = {
     "[class*='MuiButton']",
     "[class*='ant-btn']",
   ],
-  nav: [
-    "nav a",
-    "header a",
-    "[role='navigation'] a",
-    ".nav a",
-    ".navbar a",
-    "[role='menubar'] a",
-    "[role='menu'] a",
-    "[role='menuitem']",
-    "[role='tab']",
-    "aside nav a",
+  form: [
+    "form",
+    "[role='form']",
+    "[data-form]",
+    "[data-testid*='form']",
+    "[aria-label*='form']",
+    // Headless/React form libraries that render a div wrapper
+    "[data-radix-form]",
+    "[data-component='form']",
   ],
-  form: ["form", "[role='form']"],
   link: ["main a", "article a", "section a", "footer a"],
   input: ["input:not([type='hidden'])", "textarea", "select"],
   unknown: [],
@@ -120,22 +137,48 @@ type RoleRule = {
   when: (args: { el: Element; baseRole: ElementRole; text: string; tag: string; path: string }) => boolean
 }
 
+const NAV_CONTEXT_SELECTOR = "nav, header nav, [role='navigation'], [role='menubar'], [role='menu'], .navbar, .nav"
+
+// Catches branded CTAs where words are inserted between signal tokens:
+// "Get Notion free", "Start building today", "Request a product demo", etc.
+const CTA_INTENT_RE =
+  /\b(get|start|begin|join|create|try|claim|unlock|access|sign)\b.{0,30}\b(free|started|trial|access|going|account|today|now)\b|\b(request|book|schedule)\b.{0,20}\b(demo|call|tour)\b|\bsign[\s-]*up\b|\bget[\s-]*started\b/i
+
+// Buttons matching these patterns are utility/UI controls — never conversion CTAs
+const NON_CTA_BUTTON_RE =
+  /^(cookie|privacy|terms|legal|manage cookies|accept|reject|decline|close|dismiss|cancel|back|menu|open .{0,30}(menu|dropdown|nav)|pause[:\s]|play[:\s]|stop\b|mute|volume|language|share|copy|filter|sort|previous|next|skip)/i
+
 const ROLE_INFERENCE_RULES: RoleRule[] = [
+  {
+    // Nav context takes priority over button/CTA classification —
+    // UNLESS the element text contains a conversion signal. Checks both exact
+    // substring and regex to handle branded variants like "Get Notion free".
+    role: "nav",
+    when: ({ el, baseRole, path, text }) => {
+      const lower = text.toLowerCase().trim()
+      const hasCTASignal =
+        [...CTA_TEXT_SIGNALS].some((s) => lower.includes(s)) || CTA_INTENT_RE.test(text)
+      if (hasCTASignal) return false
+      return baseRole === "nav" || path.includes("nav") || !!el.closest(NAV_CONTEXT_SELECTOR)
+    },
+  },
   {
     role: "cta",
     when: ({ tag, el, text }) => {
       const type = (el as HTMLInputElement).type?.toLowerCase?.() ?? ""
-      const isButtonish = ["button"].includes(tag) || (tag === "input" && ["submit", "button"].includes(type))
+      const isButtonish = tag === "button" || (tag === "input" && ["submit", "button"].includes(type))
       const ariaRole = (el.getAttribute("role") || "").toLowerCase()
       const roleButtonish = ariaRole === "button"
       const lower = text.toLowerCase().trim()
-      const byText = CTA_TEXT_SIGNALS.has(lower) || AUTH_SIGNALS.has(lower)
+      // Utility buttons (cookie banners, dropdowns, media controls) are never CTAs
+      if ((isButtonish || roleButtonish) && NON_CTA_BUTTON_RE.test(text)) return false
+      const byText =
+        CTA_TEXT_SIGNALS.has(lower) ||
+        AUTH_SIGNALS.has(lower) ||
+        [...CTA_TEXT_SIGNALS].some((s) => lower.includes(s)) ||
+        CTA_INTENT_RE.test(text)
       return isButtonish || roleButtonish || byText
     },
-  },
-  {
-    role: "nav",
-    when: ({ baseRole, path }) => baseRole === "nav" || path.includes("nav"),
   },
   {
     role: "form",
@@ -197,6 +240,8 @@ export function detectImportance(text: string): ElementImportance {
   for (const signal of CTA_TEXT_SIGNALS) {
     if (normalized.includes(signal)) return "primary"
   }
+  // Regex catches branded variants: "Get Notion free", "Start building today", etc.
+  if (CTA_INTENT_RE.test(text)) return "primary"
   return "secondary"
 }
 
